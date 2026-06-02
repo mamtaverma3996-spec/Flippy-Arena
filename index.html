@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Fire Tournament Arena</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1729 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #fff;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .container { max-width: 550px; margin: 0 auto; padding: 0 0 30px; }
+
+        .top-banner {
+            width: 100%;
+            margin-bottom: 0;
+            border-radius: 0;
+            overflow: hidden;
+            background: #1e293b;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 0;
+        }
+        .top-banner img { width: 100%; height: auto; display: block; }
+        .default-banner {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+            font-size: 1.8rem;
+            font-weight: 900;
+            width: 100%;
+            letter-spacing: 2px;
+        }
+
+        .auth-bg {
+            background: linear-gradient(135deg, rgba(15,23,50,0.95), rgba(10,15,35,0.98));
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .auth-card {
+            background: rgba(20,27,50,0.95);
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px auto;
+            max-width: 450px;
+            border: 1px solid rgba(59,130,246,0.3);
+        }
+        .auth-title {
+            font-size: 2rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 5px;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card {
+            background: rgba(30,41,59,0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(59,130,246,0.3);
+            margin: 15px;
+        }
+        h2, h3 { color: #06b6d4; font-size: 1.1rem; margin-bottom: 12px; }
+        .flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(59,130,246,0.5);
+            background: rgba(15,23,42,0.95);
+            color: #fff;
+        }
+        button {
+            padding: 11px 22px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-size: 13px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .btn-green { background: linear-gradient(135deg, #10b981, #34d399); color: #fff; }
+        .btn-blue { background: linear-gradient(135deg, #3b82f6, #06b6d4); color: #fff; }
+        .btn-red { background: linear-gradient(135deg, #dc2626, #ef4444); color: #fff; }
+        .btn-orange { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        
+        .balance {
+            background: rgba(15,23,42,0.9);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin: 15px 0;
+            border: 1px solid rgba(16,185,129,0.3);
+        }
+        .balance span { font-size: 32px; color: #10b981; font-weight: bold; }
+        
+        .t-card {
+            background: #fff;
+            color: #111;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 12px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .t-card-image {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            display: block;
+        }
+        .t-card-image-placeholder {
+            width: 100%;
+            height: 160px;
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+        }
+        .t-card-header { padding: 14px 16px 8px; border-bottom: 1px solid #e5e7eb; }
+        .t-card-title { font-size: 16px; font-weight: 900; color: #111; text-transform: uppercase; }
+        .t-card-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .t-stat { text-align: center; padding: 12px 0; border-right: 1px solid #f3f4f6; }
+        .t-stat:last-child { border-right: none; }
+        .t-stat-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; font-weight: 700; }
+        .t-stat-value { font-size: 18px; font-weight: 900; color: #d97706; }
+        .coin-icon {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            background: radial-gradient(circle at 35% 35%, #fcd34d, #f59e0b, #b45309);
+            border-radius: 50%;
+            margin-right: 3px;
+            vertical-align: middle;
+        }
+        .t-card-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .t-detail { text-align: center; padding: 10px 0; font-size: 12px; border-right: 1px solid #f3f4f6; }
+        .t-detail:last-child { border-right: none; }
+        .t-detail-label { font-size: 9px; color: #9ca3af; text-transform: uppercase; font-weight: 700; }
+        .t-detail-value { font-size: 14px; font-weight: 900; color: #111; margin-top: 2px; }
+        .t-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            gap: 8px;
+        }
+        .t-spots { font-size: 11px; color: #ef4444; font-weight: 700; }
+        .t-btn-details {
+            background: transparent;
+            color: #3b82f6;
+            border: 1.5px solid #3b82f6;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .t-btn-join {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 20px;
+            font-size: 12px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+        .t-btn-join:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .room-card {
+            background: #fff;
+            color: #111;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 12px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .room-header { background: linear-gradient(135deg, #10b981, #34d399); color: #fff; padding: 12px 16px; font-weight: bold; text-align: center; }
+        .room-grid { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #e5e7eb; }
+        .room-cell { padding: 16px; text-align: center; border-right: 1px solid #e5e7eb; }
+        .room-cell:last-child { border-right: none; }
+        .room-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; font-weight: 700; margin-bottom: 5px; }
+        .room-value { font-size: 22px; font-weight: 900; color: #10b981; }
+
+        .message-card {
+            background: rgba(15,23,42,0.8);
+            border-radius: 12px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+        .tag {
+            background: #3b82f6;
+            padding: 2px 8px;
+            border-radius: 15px;
+            font-size: 10px;
+            display: inline-block;
+            margin: 2px;
+        }
+        .scroll { max-height: 350px; overflow-y: auto; padding-right: 5px; }
+        .scroll::-webkit-scrollbar { width: 5px; }
+        .scroll::-webkit-scrollbar-track { background: #1e293b; border-radius: 10px; }
+        .scroll::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #1e293b;
+            border-radius: 20px;
+            padding: 25px;
+            width: 92%;
+            max-width: 460px;
+            border: 1px solid #3b82f6;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .modal-title { color: #f59e0b; font-size: 1.2rem; font-weight: 900; text-align: center; margin-bottom: 15px; }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .detail-item { background: rgba(15,23,42,0.6); border-radius: 10px; padding: 10px; text-align: center; }
+        .detail-label { font-size: 10px; color: #64748b; text-transform: uppercase; }
+        .detail-value { font-size: 16px; font-weight: bold; color: #f59e0b; margin-top: 3px; }
+
+        .ff-input-group {
+            background: rgba(6,182,212,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(6,182,212,0.3);
+        }
+        .ff-input-group label { font-size: 12px; color: #94a3b8; margin-top: 8px; display: block; }
+        hr { margin: 15px 0; border-color: #334155; }
+        .small-text { font-size: 11px; color: #64748b; }
+        
+        .support-links-inline { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+        .mini-link {
+            background: rgba(6,182,212,0.15);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .info-links-bottom {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border-radius: 16px;
+            padding: 15px;
+            margin-top: 20px;
+            border: 1px solid rgba(59,130,246,0.3);
+        }
+        .link-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            margin: 8px 0;
+            background: rgba(15,23,42,0.8);
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
+        .link-btn:hover { transform: translateX(5px); border-color: #06b6d4; background: rgba(6,182,212,0.2); }
+        .link-btn .icon { font-size: 28px; }
+        .link-btn .text { flex: 1; }
+        .link-btn .title { font-weight: bold; font-size: 14px; }
+        .team-input-group {
+            background: rgba(6,182,212,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(6,182,212,0.3);
+        }
+        .team-title { color: #f59e0b; font-weight: bold; margin-bottom: 10px; font-size: 13px; }
+        .warning-text { background: rgba(239,68,68,0.1); padding: 10px; border-radius: 12px; font-size: 11px; color: #f87171; margin: 10px 0; }
+        
+        .edit-profile-btn {
+            background: rgba(6,182,212,0.2);
+            border: 1px solid #06b6d4;
+            color: #06b6d4;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .edit-profile-btn:hover {
+            background: #06b6d4;
+            color: #fff;
+        }
+        
+        .photo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .photo-item {
+            background: rgba(15,23,42,0.6);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .photo-item img {
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+        }
+        .photo-caption {
+            padding: 8px;
+            font-size: 10px;
+            color: #94a3b8;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyABpj0Ngi2CLSmY3JJAEVhLZ_kdJLUcK3M",
+    authDomain: "ff-tournament-by-amber.firebaseapp.com",
+    databaseURL: "https://ff-tournament-by-amber-default-rtdb.firebaseio.com",
+    projectId: "ff-tournament-by-amber",
+    storageBucket: "ff-tournament-by-amber.firebasestorage.app",
+    messagingSenderId: "762907965921",
+    appId: "1:762907965921:web:bdf4bc55dddcecac6dbaa0"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let user = null, tournaments = [], personalMessages = [], bannerImage = null, galleryPhotos = [];
+
+function openYouTube() { window.open('https://www.youtube.com/@FF-Championship-Arena', '_blank'); }
+function openWhatsApp() { window.open('https://chat.whatsapp.com/KGREA0JGpVc1Ni8t5HxyYV', '_blank'); }
+
+async function loadBanner() {
+    try {
+        const bannerSnap = await db.ref('topBanner').once('value');
+        if(bannerSnap.val() && bannerSnap.val().imageBase64) bannerImage = bannerSnap.val().imageBase64;
+    } catch(e) {}
+}
+function getBannerHTML() {
+    if(bannerImage) return `<img src="${bannerImage}" alt="Banner">`;
+    return `<div class="default-banner">🔥 Flippy Arena 🔥
+    16+ mandatory</div>`;
+}
+
+async function loadGallery() {
+    try {
+        const photosSnap = await db.ref('broadcastPhotos').once('value');
+        galleryPhotos = photosSnap.val() ? Object.values(photosSnap.val()) : [];
+    } catch(e) { galleryPhotos = []; }
+}
+
+async function loadAll() {
+    await loadBanner();
+    await loadGallery();
+    try {
+        const tSnap = await db.ref('tournaments').once('value');
+        tournaments = tSnap.val() ? Object.entries(tSnap.val()).map(([id,d])=>({id,...d})) : [];
+    } catch(e) { tournaments = []; }
+    if(user) {
+        try {
+            const pmSnap = await db.ref(`personalMessages/${user.id}`).once('value');
+            personalMessages = pmSnap.val() ? Object.values(pmSnap.val()) : [];
+        } catch(e) { personalMessages = []; }
+    }
+}
+
+function main() {
+    document.getElementById('app').innerHTML = `
+        <div class="top-banner">${getBannerHTML()}</div>
+        <div class="auth-bg">
+            <div class="auth-card">
+                <div class="auth-title">🎮 FREE FIRE</div>
+                <div class="auth-subtitle" style="text-align:center;color:#94a3b8;font-size:12px;margin-bottom:20px;">Tournament Arena</div>
+                <div class="grid">
+                    <button class="btn-green" style="width:100%;border-radius:10px;" onclick="loginScreen()">🔐 LOGIN</button>
+                    <button class="btn-blue" style="width:100%;border-radius:10px;" onclick="signupScreen()">📝 SIGN UP</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function loginScreen() {
+    document.getElementById('app').innerHTML = `
+        <div class="top-banner">${getBannerHTML()}</div>
+        <div class="auth-bg">
+            <div class="auth-card">
+                <div class="auth-title">🔐 LOGIN</div>
+                <input type="email" id="email" placeholder="📧 Email Address" style="border-radius:10px;">
+                <input type="password" id="pass" placeholder="🔐 Password" style="border-radius:10px;">
+                <div class="grid" style="margin-top:15px;">
+                    <button class="btn-green" style="width:100%;border-radius:10px;" onclick="login()">LOGIN</button>
+                    <button class="btn-red" style="width:100%;border-radius:10px;" onclick="main()">BACK</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function signupScreen() {
+    document.getElementById('app').innerHTML = `
+        <div class="top-banner">${getBannerHTML()}</div>
+        <div class="auth-bg">
+            <div class="auth-card">
+                <div class="auth-title">📝 SIGN UP</div>
+                <input type="text" id="name" placeholder="👤 Full Name" style="border-radius:10px;">
+                <input type="email" id="email" placeholder="📧 Email Address" style="border-radius:10px;">
+                <input type="password" id="pass" placeholder="🔐 Password (min 6)" style="border-radius:10px;">
+                <div class="ff-input-group">
+                    <label>🎮 FREE FIRE NICKNAME</label>
+                    <input type="text" id="ffName" placeholder="Your in-game nickname">
+                    <label>🆔 FREE FIRE UID</label>
+                    <input type="text" id="ffUid" placeholder="Your UID">
+                </div>
+                <div class="grid">
+                    <button class="btn-green" style="width:100%;border-radius:10px;" onclick="signup()">CREATE</button>
+                    <button class="btn-red" style="width:100%;border-radius:10px;" onclick="loginScreen()">BACK</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function signup() {
+    const name=document.getElementById('name').value, email=document.getElementById('email').value,
+          pass=document.getElementById('pass').value, ffName=document.getElementById('ffName').value,
+          ffUid=document.getElementById('ffUid').value;
+    if(!name||!email||!pass||!ffName||!ffUid) return alert('Fill all fields');
+    if(pass.length<6) return alert('Password min 6 chars');
+    try {
+        const exist = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+        if(exist.exists()) return alert('Email already exists');
+        await db.ref('users').push({name,email,password:pass,balance:0,ffName,ffUid});
+        alert('✅ Account created! Please login.');
+        loginScreen();
+    } catch(e) { alert("Error: "+e.message); }
+}
+
+async function login() {
+    const email=document.getElementById('email').value, pass=document.getElementById('pass').value;
+    try {
+        const snap = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+        let data=null, uid=null;
+        snap.forEach(s=>{ data=s.val(); uid=s.key; });
+        if(!data) return alert('User not found');
+        if(data.password!==pass) return alert('Wrong password');
+        user={id:uid,name:data.name,email:data.email,balance:data.balance||0,ffName:data.ffName,ffUid:data.ffUid};
+        home();
+    } catch(e) { alert("Error: "+e.message); }
+}
+
+function editProfile() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-title">✏️ EDIT PROFILE</div>
+            <div class="ff-input-group">
+                <label>👤 FULL NAME</label>
+                <input type="text" id="editName" value="${user.name}" placeholder="Your full name">
+                <label style="margin-top:12px;">🎮 FREE FIRE NICKNAME</label>
+                <input type="text" id="editFfName" value="${user.ffName || ''}" placeholder="Your in-game nickname">
+                <label style="margin-top:12px;">🆔 FREE FIRE UID</label>
+                <input type="text" id="editFfUid" value="${user.ffUid || ''}" placeholder="Your UID">
+            </div>
+            <div class="warning-text" style="margin-bottom:15px;">
+                ⚠️ Note: Changing nickname/UID will affect future tournament registrations.
+            </div>
+            <button class="btn-green" id="saveProfileBtn" style="width:100%;">💾 SAVE CHANGES</button>
+            <button class="btn-red" id="closeProfileBtn" style="width:100%; margin-top:10px;">❌ CANCEL</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('saveProfileBtn').onclick = async () => {
+        const newName = document.getElementById('editName').value.trim();
+        const newFfName = document.getElementById('editFfName').value.trim();
+        const newFfUid = document.getElementById('editFfUid').value.trim();
+        
+        if(!newName) return alert('❌ Name cannot be empty');
+        if(!newFfName) return alert('❌ FF Nickname cannot be empty');
+        if(!newFfUid) return alert('❌ FF UID cannot be empty');
+        
+        await db.ref(`users/${user.id}`).update({
+            name: newName,
+            ffName: newFfName,
+            ffUid: newFfUid
+        });
+        
+        user.name = newName;
+        user.ffName = newFfName;
+        user.ffUid = newFfUid;
+        
+        alert('✅ Profile updated successfully!');
+        modal.remove();
+        home();
+    };
+    
+    document.getElementById('closeProfileBtn').onclick = () => modal.remove();
+}
+
+async function home() {
+    await loadAll();
+    const userJoined = tournaments.filter(t => t.participants && t.participants[user.id]);
+    const available = tournaments.filter(t => !(t.participants||{})[user.id]);
+    const unreadMessages = personalMessages.filter(m=>!m.read).length;
+
+    document.getElementById('app').innerHTML = `
+        <div class="top-banner">${getBannerHTML()}</div>
+        <div class="card">
+            <div class="flex">
+                <div>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <h2>🎮 ${user.name}</h2>
+                        <span class="edit-profile-btn" onclick="editProfile()">✏️ EDIT PROFILE</span>
+                    </div>
+                    <div style="font-size:11px;color:#94a3b8;">${user.email}</div>
+                    <div><span class="tag">🎮 ${user.ffName}</span> <span class="tag">${user.ffUid}</span></div>
+                </div>
+                <button class="btn-red" style="padding:7px 12px;font-size:11px;" onclick="user=null;main()">LOGOUT</button>
+            </div>
+            <div class="balance"><div>💰 BALANCE</div><span>₹${user.balance}</span></div>
+            <div class="grid">
+                <button class="btn-green" onclick="addMoneyModal()">➕ ADD MONEY</button>
+                <button class="btn-blue" onclick="withdrawModal()">💸 WITHDRAW</button>
+            </div>
+            <hr>
+            <h3>📢 MESSAGES ${unreadMessages>0?`<span style="background:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;">${unreadMessages}</span>`:''}</h3>
+            <div id="msgList" class="scroll"></div>
+            <h3>🏠 MY JOINED TOURNAMENTS</h3>
+            <div id="joinedList" class="scroll"></div>
+            <h3>⚔️ AVAILABLE TOURNAMENTS</h3>
+            <div id="tourList" class="scroll"></div>
+            <h3>🖼️ GALLERY</h3>
+            <div id="galleryList" class="scroll"></div>
+            <h3>💬 MESSAGE TO ADMIN</h3>
+            <textarea id="userMsg" rows="2" placeholder="Type your message..."></textarea>
+            <button class="btn-orange" onclick="sendMessage()" style="width:100%;border-radius:10px;margin-top:8px;">SEND</button>
+            
+            <div class="info-links-bottom">
+                <strong style="color:#f59e0b; display:block; margin-bottom:10px;">📢 IMPORTANT LINKS</strong>
+                <button type="button" class="link-btn" id="youtubeBottomBtn"><div class="icon">🎬</div><div class="text"><div class="title">Watch Tournament Videos</div></div><div class="arrow">➡️</div></button>
+                <button type="button" class="link-btn" id="whatsappBottomBtn"><div class="icon">💬</div><div class="text"><div class="title">Join WhatsApp Customer Care</div></div><div class="arrow">➡️</div></button>
+            </div>
+        </div>`;
+
+    document.getElementById('youtubeBottomBtn').onclick = openYouTube;
+    document.getElementById('whatsappBottomBtn').onclick = openWhatsApp;
+
+    // Messages
+    const msgDiv = document.getElementById('msgList');
+    msgDiv.innerHTML = personalMessages.length===0
+        ? '<div class="message-card">📭 No messages</div>'
+        : personalMessages.map(m=>`
+            <div class="message-card">
+                <div><strong>📨 ${m.fromAdmin||'Admin'}</strong></div>
+                <div style="margin:5px 0;font-size:12px;">${m.text}</div>
+                <div class="small-text">${new Date(m.timestamp).toLocaleString()}</div>
+                ${!m.read ? `<div class="read-btn" onclick="markMessageRead()">✅ MARK READ</div>` : ''}
+            </div>`).join('');
+
+    // Joined Tournaments
+    const joinedDiv = document.getElementById('joinedList');
+    joinedDiv.innerHTML = userJoined.length===0
+        ? '<div class="message-card">📭 No tournaments joined yet!</div>'
+        : userJoined.map(t=>`
+            <div class="room-card">
+                ${t.tournamentPhoto?`<img src="${t.tournamentPhoto}" style="width:100%;height:120px;object-fit:cover;">`:''}
+                <div style="padding:12px 16px;">
+                    <div style="font-weight:bold;color:#111;margin-bottom:8px;">🏆 ${t.name} ${t.fees === 0 ? '🎁 FREE' : ''}</div>
+                    <div style="font-size:11px;color:#9ca3af;">📅 ${t.date || 'TBA'} | ⏰ ${t.time || 'TBA'}</div>
+                </div>
+                <div class="room-grid">
+                    <div class="room-cell"><div class="room-label">🔑 Room ID</div><div class="room-value">${t.roomId||'TBA'}</div></div>
+                    <div class="room-cell"><div class="room-label">🔐 Password</div><div class="room-value">${t.roomPass||'TBA'}</div></div>
+                </div>
+                <div class="support-links-inline" style="padding:10px 16px; background:#f9fafb;">
+                    <div class="mini-link" onclick="openYouTube()">🎬 YouTube</div>
+                    <div class="mini-link" onclick="openWhatsApp()">💬 WhatsApp</div>
+                </div>
+            </div>`).join('');
+
+    // Available Tournaments - MODIFIED: Version replaced with Date & Time
+    const tourDiv = document.getElementById('tourList');
+    tourDiv.innerHTML = available.length===0
+        ? '<div class="message-card">📭 No tournaments available</div>'
+        : available.map(t=>{
+            const spots = (t.maxPlayers||0) - Object.keys(t.participants||{}).length;
+            const isFree = t.fees === 0;
+            return `
+            <div class="t-card">
+                ${t.tournamentPhoto ? `<img src="${t.tournamentPhoto}" class="t-card-image">` : `<div class="t-card-image-placeholder">🔥</div>`}
+                <div class="t-card-header"><div class="t-card-title">${t.name} ${isFree ? '🎁 FREE' : ''}</div></div>
+                <div class="t-card-stats">
+                    <div class="t-stat"><div class="t-stat-label">Prize Pool ▾</div><div class="t-stat-value"><span class="coin-icon"></span>${isFree ? 'FREE' : (t.fees||0)*(t.maxPlayers||0)}</div></div>
+                    <div class="t-stat"><div class="t-stat-label">Per Kill</div><div class="t-stat-value"><span class="coin-icon"></span>${t.perKill||0}</div></div>
+                    <div class="t-stat"><div class="t-stat-label">Entry Fee</div><div class="t-stat-value"><span class="coin-icon"></span>${isFree ? 'FREE' : t.fees||0}</div></div>
+                </div>
+                <!-- MODIFIED: VERSION REMOVED, DATE & TIME ADDED -->
+                <div class="t-card-details">
+                    <div class="t-detail"><div class="t-detail-label">Type</div><div class="t-detail-value">${t.type||'Squad'}</div></div>
+                    <div class="t-detail"><div class="t-detail-label">Date</div><div class="t-detail-value">${t.date || 'TBA'}</div></div>
+                    <div class="t-detail"><div class="t-detail-label">Time</div><div class="t-detail-value">${t.time || 'TBA'}</div></div>
+                </div>
+                <div class="t-card-footer">
+                    <div class="t-spots">${spots<=0?'FULL':spots+' Spot Left'}</div>
+                    <div class="t-btn-group">
+                        <button class="t-btn-details" onclick="showDetails('${t.id}')">👁 DETAILS</button>
+                        <button class="t-btn-join" ${spots<=0?'disabled':''} onclick="showRegistrationModal('${t.id}',${t.fees||0})">${isFree ? '🎁 JOIN FREE' : 'JOIN ₹'+t.fees}</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    
+    // Gallery
+    const galleryDiv = document.getElementById('galleryList');
+    if(galleryPhotos.length === 0) {
+        galleryDiv.innerHTML = '<div class="message-card">📭 No photos in gallery</div>';
+    } else {
+        galleryDiv.innerHTML = `<div class="photo-grid">` + galleryPhotos.map(photo => `
+            <div class="photo-item">
+                <img src="${photo.imageBase64}" alt="Gallery Photo">
+                ${photo.caption ? `<div class="photo-caption">${photo.caption}</div>` : ''}
+            </div>
+        `).join('') + `</div>`;
+    }
+}
+
+function showDetails(id) {
+    const t = tournaments.find(x=>x.id===id);
+    if(!t) return;
+    const spots = (t.maxPlayers||0) - Object.keys(t.participants||{}).length;
+    const isFree = t.fees === 0;
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-title">🏆 TOURNAMENT DETAILS</div>
+            ${t.tournamentPhoto?`<img src="${t.tournamentPhoto}" style="width:100%;border-radius:12px;margin-bottom:15px;height:140px;object-fit:cover;">`:''}
+            <div style="text-align:center;font-weight:bold;color:#06b6d4;margin-bottom:12px;">${t.name} ${isFree ? '🎁 FREE TOURNAMENT' : ''}</div>
+            <!-- MODIFIED DETAIL GRID: VERSION REMOVED, DATE & TIME ADDED -->
+            <div class="detail-grid">
+                <div class="detail-item"><div class="detail-label">TYPE</div><div class="detail-value">${t.type||'Squad'}</div></div>
+                <div class="detail-item"><div class="detail-label">DATE</div><div class="detail-value">${t.date || 'TBA'}</div></div>
+                <div class="detail-item"><div class="detail-label">TIME</div><div class="detail-value">${t.time || 'TBA'}</div></div>
+                <div class="detail-item"><div class="detail-label">MAP</div><div class="detail-value">${t.map||'Bermuda'}</div></div>
+                <div class="detail-item"><div class="detail-label">ENTRY</div><div class="detail-value">${isFree ? 'FREE' : '₹'+t.fees}</div></div>
+                <div class="detail-item"><div class="detail-label">PER KILL</div><div class="detail-value">₹${t.perKill||0}</div></div>
+                <div class="detail-item"><div class="detail-label">PRIZE POOL</div><div class="detail-value">${isFree ? 'FREE' : '₹' + ((t.fees||0)*(t.maxPlayers||0))}</div></div>
+                <div class="detail-item"><div class="detail-label">PLAYERS</div><div class="detail-value">${Object.keys(t.participants||{}).length}/${t.maxPlayers}</div></div>
+            </div>
+            <div class="warning-text"><strong>📜 RULES</strong><br>${t.rules || '1. Screen Recording Mandatory\n2. No hacking/cheating\n3. Join on time'}</div>
+            <div class="support-links-inline"><div class="mini-link" onclick="openYouTube()">🎬 YouTube</div><div class="mini-link" onclick="openWhatsApp()">💬 WhatsApp</div></div>
+            <div style="background:rgba(239,68,68,0.1);border-radius:10px;padding:12px;margin:15px 0;text-align:center;font-size:11px;color:#fca5a5;">🔑 Room ID & Password will appear ONLY after registration</div>
+            <div class="grid" style="gap:10px;">
+                <button class="btn-green" onclick="this.closest('.modal').remove();showRegistrationModal('${t.id}',${t.fees||0})">${isFree ? '🎁 JOIN FREE' : 'REGISTER ₹'+t.fees}</button>
+                <button class="btn-red" onclick="this.closest('.modal').remove()">CLOSE</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+}
+
+function showRegistrationModal(tournamentId, fees) {
+    const tournament = tournaments.find(t => t.id === tournamentId);
+    if(!tournament) return;
+    if(fees > 0 && user.balance < fees) {
+        alert(`❌ Insufficient balance! Need ₹${fees}, you have ₹${user.balance}`);
+        return;
+    }
+    
+    const mode = tournament.mode || 'Solo';
+    let teamFields = '';
+    
+    if(mode === 'Solo') {
+        teamFields = `<div class="team-input-group"><div class="team-title">🎮 YOUR DETAILS</div><input type="text" id="p1_name" placeholder="Your Nickname" value="${user.ffName || ''}"><input type="text" id="p1_uid" placeholder="Your UID" value="${user.ffUid || ''}"></div>`;
+    } else if(mode === 'Duo') {
+        teamFields = `
+            <div class="team-input-group">
+                <div class="team-title">🏷️ TEAM NAME</div>
+                <input type="text" id="teamName" placeholder="Enter your team name (e.g., GMR Warriors)">
+            </div>
+            <div class="team-input-group"><div class="team-title">👤 PLAYER 1 (YOU)</div><input type="text" id="p1_name" placeholder="Your Nickname" value="${user.ffName || ''}"><input type="text" id="p1_uid" placeholder="Your UID" value="${user.ffUid || ''}"></div>
+            <div class="team-input-group"><div class="team-title">👥 PLAYER 2 (TEAMMATE)</div><input type="text" id="p2_name" placeholder="Teammate Nickname"><input type="text" id="p2_uid" placeholder="Teammate UID"></div>`;
+    } else if(mode === 'Squad') {
+        teamFields = `
+            <div class="team-input-group">
+                <div class="team-title">🏷️ TEAM NAME</div>
+                <input type="text" id="teamName" placeholder="Enter your team name (e.g., GMR Warriors)">
+            </div>
+            <div class="team-input-group"><div class="team-title">👤 PLAYER 1 (YOU)</div><input type="text" id="p1_name" placeholder="Your Nickname" value="${user.ffName || ''}"><input type="text" id="p1_uid" placeholder="Your UID" value="${user.ffUid || ''}"></div>
+            <div class="team-input-group"><div class="team-title">👥 PLAYER 2</div><input type="text" id="p2_name" placeholder="Player 2 Nickname"><input type="text" id="p2_uid" placeholder="Player 2 UID"></div>
+            <div class="team-input-group"><div class="team-title">👥 PLAYER 3</div><input type="text" id="p3_name" placeholder="Player 3 Nickname"><input type="text" id="p3_uid" placeholder="Player 3 UID"></div>
+            <div class="team-input-group"><div class="team-title">👥 PLAYER 4</div><input type="text" id="p4_name" placeholder="Player 4 Nickname"><input type="text" id="p4_uid" placeholder="Player 4 UID"></div>`;
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-title">🎮 ${mode} REGISTRATION</div>
+            <div style="text-align:center;margin:10px 0;"><strong>🏆 ${tournament.name}</strong><br>💰 Entry Fee: ${fees === 0 ? 'FREE' : '₹'+fees}</div>
+            ${teamFields}
+            <div class="warning-text">⚠️ Screen Recording Mandatory! No hacking/cheating.</div>
+            <button class="btn-green" id="confirmReg" style="width:100%;">✅ ${fees === 0 ? 'JOIN FREE' : 'CONFIRM & PAY ₹'+fees}</button>
+            <button class="btn-red" id="cancelReg" style="width:100%;margin-top:10px;">❌ CANCEL</button>
+        </div>`;
+    document.body.appendChild(modal);
+    
+    document.getElementById('confirmReg').onclick = async () => {
+        let teamMembers = [];
+        let teamName = '';
+        
+        if(mode === 'Solo') {
+            const name = document.getElementById('p1_name').value;
+            const uid = document.getElementById('p1_uid').value;
+            if(!name || !uid) return alert('❌ Please fill your details');
+            teamMembers = [{name, uid, isLeader: true}];
+        } else {
+            teamName = document.getElementById('teamName')?.value.trim() || `Team ${user.name}`;
+            const p1n = document.getElementById('p1_name').value, p1u = document.getElementById('p1_uid').value;
+            const p2n = document.getElementById('p2_name').value, p2u = document.getElementById('p2_uid').value;
+            if(!p1n || !p1u) return alert('❌ Fill your details');
+            if(!p2n || !p2u) return alert('❌ Fill teammate details');
+            
+            if(mode === 'Duo') {
+                teamMembers = [{name: p1n, uid: p1u, isLeader: true}, {name: p2n, uid: p2u, isLeader: false}];
+            } else {
+                const p3n = document.getElementById('p3_name').value, p3u = document.getElementById('p3_uid').value;
+                const p4n = document.getElementById('p4_name').value, p4u = document.getElementById('p4_uid').value;
+                if(!p3n || !p3u) return alert('❌ Fill player 3 details');
+                if(!p4n || !p4u) return alert('❌ Fill player 4 details');
+                teamMembers = [
+                    {name: p1n, uid: p1u, isLeader: true},
+                    {name: p2n, uid: p2u, isLeader: false},
+                    {name: p3n, uid: p3u, isLeader: false},
+                    {name: p4n, uid: p4u, isLeader: false}
+                ];
+            }
+        }
+        modal.remove();
+        
+        const parts = tournament.participants || {};
+        parts[user.id] = { 
+            name: user.name, 
+            email: user.email, 
+            teamMembers, 
+            teamName: teamName || null,
+            mode, 
+            joinedAt: new Date().toISOString() 
+        };
+        
+        if(teamMembers[0]) {
+            await db.ref(`users/${user.id}`).update({ ffName: teamMembers[0].name, ffUid: teamMembers[0].uid });
+            user.ffName = teamMembers[0].name;
+            user.ffUid = teamMembers[0].uid;
+        }
+        
+        await db.ref(`tournaments/${tournamentId}`).update({ participants: parts });
+        
+        let paymentMsg = '';
+        if(fees > 0) {
+            const oldUserBalance = user.balance;
+            await db.ref(`users/${user.id}`).update({ balance: user.balance - fees });
+            
+            const adminId = tournament.adminId;
+            const adminSnap = await db.ref(`admins/${adminId}`).once('value');
+            const oldAdminBalance = adminSnap.val()?.balance || 0;
+            await db.ref(`admins/${adminId}`).update({ balance: oldAdminBalance + fees });
+            
+            user.balance -= fees;
+            paymentMsg = `\n\n💰 PAYMENT:\n💳 YOUR BALANCE: ₹${oldUserBalance} → ₹${user.balance}\n👑 ADMIN BALANCE: ₹${oldAdminBalance} → ₹${oldAdminBalance + fees}`;
+        } else {
+            paymentMsg = `\n\n🎁 FREE TOURNAMENT - No payment required!`;
+        }
+        
+        alert(`✅ REGISTERED SUCCESSFULLY!\n\n🏆 ${tournament.name}\n🎮 Mode: ${mode}${teamName ? `\n🏷️ Team Name: ${teamName}` : ''}\n💰 Entry Fee: ${fees === 0 ? 'FREE' : '₹'+fees}${paymentMsg}\n\n🔑 Room ID: ${tournament.roomId}\n🔐 Password: ${tournament.roomPass}\n\n📹 Screen Recording Mandatory!`);
+        
+        home();
+    };
+    document.getElementById('cancelReg').onclick = () => modal.remove();
+}
+
+window.markMessageRead = async () => {
+    const msgRef = db.ref(`personalMessages/${user.id}`);
+    const snap = await msgRef.once('value');
+    snap.forEach(s => { if(!s.val().read) s.ref.update({read: true}); });
+    alert('✅ Marked as read');
+    home();
+};
+
+async function sendMessage() {
+    const msg = document.getElementById('userMsg').value;
+    if(!msg) return alert('Enter message');
+    await db.ref(`userMessagesToAdmin/${user.id}`).push({ userName: user.name, userEmail: user.email, message: msg, timestamp: new Date().toISOString() });
+    alert('✅ Message sent!');
+    document.getElementById('userMsg').value = '';
+}
+
+async function addMoneyModal() {
+    const paymentSnap = await db.ref('paymentSettings').once('value');
+    const payment = paymentSnap.val() || {};
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-title">💰 ADD MONEY</div>
+            ${payment.qrImageBase64?`<img src="${payment.qrImageBase64}" style="max-width:140px;margin:10px auto;display:block;border-radius:10px;">`:'<div style="text-align:center;color:#f59e0b;padding:15px;">⚠️ QR not available</div>'}
+            <div style="background:rgba(6,182,212,0.1);padding:10px;border-radius:10px;margin:10px 0;"><strong>UPI:</strong> ${payment.upiId||'gmr@okhdfcbank'}</div>
+            <input type="text" id="upi" placeholder="Your UPI ID">
+            <input type="number" id="amt" placeholder="Amount (₹)" min="10">
+            <button class="btn-green" id="submitAdd">SUBMIT</button>
+            <button class="btn-red" id="closeAdd">CANCEL</button>
+        </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('submitAdd').onclick = async () => {
+        const upi = document.getElementById('upi').value, amt = parseInt(document.getElementById('amt').value);
+        if(!upi || !amt) return alert('Fill fields');
+        await db.ref(`addMoneyRequests/${user.id}`).push({ upi, amount: amt, userName: user.name, userEmail: user.email, status: 'pending', requestedAt: new Date().toISOString() });
+        alert(`✅ Request sent! ₹${amt} will be added after verification.`);
+        modal.remove();
+    };
+    document.getElementById('closeAdd').onclick = () => modal.remove();
+}
+
+function withdrawModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-title">💸 WITHDRAW</div>
+            <div style="text-align:center;margin-bottom:15px;">Balance: <strong style="color:#10b981;">₹${user.balance}</strong></div>
+            <input type="text" id="upi" placeholder="UPI ID">
+            <input type="number" id="amt" placeholder="Amount (₹)" min="50" max="${user.balance}">
+            <button class="btn-blue" id="submitW">WITHDRAW</button>
+            <button class="btn-red" id="closeW">CANCEL</button>
+        </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('submitW').onclick = async () => {
+        const upi = document.getElementById('upi').value, amt = parseInt(document.getElementById('amt').value);
+        if(!upi || !amt) return alert('Fill fields');
+        if(amt > user.balance) return alert('Insufficient balance');
+        await db.ref(`withdrawRequests/${user.id}`).push({ upi, amount: amt, userName: user.name, userEmail: user.email, status: 'pending', requestedAt: new Date().toISOString() });
+        await db.ref(`users/${user.id}`).update({ balance: user.balance - amt });
+        user.balance -= amt;
+        alert(`✅ Withdrawal request sent! ₹${amt} will be sent to ${upi}`);
+        modal.remove();
+        home();
+    };
+    document.getElementById('closeW').onclick = () => modal.remove();
+}
+
+main();
+</script>
+</body>
+</html>
