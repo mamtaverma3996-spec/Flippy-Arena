@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel | GMR Battle - Complete</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1729 100%);
+            color: #fff;
+            font-family: 'Space Mono', monospace;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        h2, h3 { font-family: 'Orbitron', sans-serif; color: #06b6d4; margin-bottom: 20px; }
+        .flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .input-group { margin-bottom: 18px; }
+        .input-group label { display: block; margin-bottom: 8px; color: #06b6d4; font-weight: 700; font-size: 0.85em; }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            background: rgba(15, 23, 42, 0.95);
+            color: #fff;
+            font-family: 'Space Mono', monospace;
+        }
+        button {
+            padding: 12px 24px;
+            border-radius: 50px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            transition: all 0.3s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+        .btn-green { background: linear-gradient(135deg, #10b981, #34d399); color: #fff; }
+        .btn-blue { background: linear-gradient(135deg, #3b82f6, #06b6d4); color: #fff; }
+        .btn-red { background: linear-gradient(135deg, #dc2626, #ef4444); color: #fff; }
+        .btn-orange { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
+        .btn-purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; }
+        .btn-pink { background: linear-gradient(135deg, #ec4899, #f472b6); color: #fff; }
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .admin-option {
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            border-radius: 15px;
+            padding: 18px;
+            text-align: center;
+            cursor: pointer;
+            display: inline-block;
+            width: 180px;
+            margin: 10px;
+        }
+        .admin-option:hover { background: rgba(59, 130, 246, 0.2); border-color: #06b6d4; }
+        .admin-option.selected { background: rgba(59, 130, 246, 0.3); border-color: #06b6d4; }
+        .admin-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 20px 0; }
+        .balance {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 18px;
+            padding: 22px;
+            text-align: center;
+            margin: 20px 0;
+            border: 2px solid rgba(16, 185, 129, 0.3);
+        }
+        .balance .amount { font-size: 38px; color: #10b981; font-weight: bold; }
+        .tournament-card {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 18px 0;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+        }
+        .tournament-name { font-size: 1.2em; font-weight: bold; color: #06b6d4; margin-bottom: 8px; }
+        .tournament-detail { font-size: 0.85em; color: #cbd5e1; margin: 4px 0; }
+        .delete-tourney-btn, .view-players-btn, .edit-tourney-btn {
+            padding: 8px 20px;
+            border-radius: 40px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 12px;
+            margin-right: 10px;
+        }
+        .delete-tourney-btn { background: linear-gradient(135deg, #dc2626, #ef4444); color: white; }
+        .view-players-btn { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+        .edit-tourney-btn { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.96);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #1e293b;
+            border-radius: 28px;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            border: 1px solid #3b82f6;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .players-list { max-height: 400px; overflow-y: auto; }
+        .player-card {
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 16px;
+            padding: 15px;
+            margin: 12px 0;
+            border-left: 4px solid #10b981;
+        }
+        .player-name { font-size: 1.1em; font-weight: bold; color: #06b6d4; }
+        .player-detail { font-size: 0.8em; color: #94a3b8; margin-top: 5px; }
+        .player-detail span { color: #10b981; }
+        .image-upload {
+            border: 2px dashed #3b82f6;
+            border-radius: 20px;
+            padding: 18px;
+            text-align: center;
+            cursor: pointer;
+            margin: 15px 0;
+            background: rgba(15,23,42,0.6);
+        }
+        .image-upload:hover { background: rgba(59, 130, 246, 0.15); }
+        .preview img { max-width: 200px; border-radius: 16px; margin-top: 12px; }
+        .room-section {
+            background: rgba(59,130,246,0.1);
+            padding: 18px;
+            border-radius: 20px;
+            margin: 18px 0;
+            border-left: 4px solid #f59e0b;
+        }
+        .badge { background: #3b82f6; padding: 4px 10px; border-radius: 40px; font-size: 11px; display: inline-block; margin-left: 12px; }
+        .stats-badge { background: #10b981; padding: 4px 10px; border-radius: 40px; font-size: 11px; display: inline-block; margin-left: 8px; }
+        .free-badge { background: #10b981; padding: 4px 10px; border-radius: 40px; font-size: 11px; display: inline-block; margin-left: 8px; }
+        .button-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+        hr { margin: 20px 0; border-color: #334155; }
+        .prize-info { background: rgba(16,185,129,0.1); padding: 10px; border-radius: 12px; margin-top: 10px; }
+        .warning-text { background: rgba(239,68,68,0.1); padding: 10px; border-radius: 12px; font-size: 11px; color: #f87171; margin: 10px 0; }
+        
+        .info-links {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border-radius: 16px;
+            padding: 15px;
+            margin: 15px 0;
+            border: 1px solid rgba(59,130,246,0.3);
+        }
+        .info-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            margin: 10px 0;
+            background: rgba(15,23,42,0.8);
+            border-radius: 12px;
+            text-decoration: none;
+            color: #fff;
+            transition: all 0.3s;
+            border: 1px solid rgba(59,130,246,0.3);
+        }
+        .info-link:hover {
+            transform: translateX(5px);
+            border-color: #06b6d4;
+            background: rgba(6,182,212,0.1);
+        }
+        .info-link .icon { font-size: 28px; }
+        .info-link .text { flex: 1; }
+        .info-link .title { font-weight: bold; font-size: 14px; }
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .photo-item {
+            background: rgba(15,23,42,0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        .photo-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        .photo-caption {
+            padding: 8px;
+            font-size: 10px;
+            color: #94a3b8;
+            text-align: center;
+        }
+        .delete-photo {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .delete-photo:hover { background: #ef4444; }
+    </style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<script>
+const config = {
+    apiKey: "AIzaSyABpj0Ngi2CLSmY3JJAEVhLZ_kdJLUcK3M",
+    authDomain: "ff-tournament-by-amber.firebaseapp.com",
+    databaseURL: "https://ff-tournament-by-amber-default-rtdb.firebaseio.com",
+    projectId: "ff-tournament-by-amber",
+    storageBucket: "ff-tournament-by-amber.firebasestorage.app",
+    messagingSenderId: "762907965921",
+    appId: "1:762907965921:web:bdf4bc55dddcecac6dbaa0"
+};
+firebase.initializeApp(config);
+const db = firebase.database();
+
+const ADMINS = [
+    {id:1, name:'Admin 1', password:'3996', isMain:true, balance:Infinity},
+    {id:2, name:'Admin 2', password:'7554', isMain:false, balance:0},
+    {id:3, name:'Admin 3', password:'5204', isMain:false, balance:0},
+    {id:4, name:'Admin 4', password:'8077', isMain:false, balance:0},
+    {id:5, name:'Admin 5', password:'7649', isMain:false, balance:0},
+    {id:6, name:'Admin 6', password:'9889', isMain:false, balance:0},
+    {id:7, name:'Admin 7', password:'1886', isMain:false, balance:0},
+    {id:8, name:'Admin 8', password:'8114', isMain:false, balance:0},
+    {id:9, name:'Admin 9', password:'1886', isMain:false, balance:0},
+    {id:10, name:'Admin 10', password:'9999', isMain:false, balance:0}
+];
+
+let admin = null;
+let tournaments = [];
+let usersCache = {};
+let broadcastPhotos = [];
+
+async function loadData() {
+    const snap = await db.ref('tournaments').once('value');
+    tournaments = snap.val() ? Object.entries(snap.val()).map(([id,d])=>({id,...d})) : [];
+    const usersSnap = await db.ref('users').once('value');
+    if(usersSnap.exists()) {
+        usersCache = {};
+        usersSnap.forEach(s => { usersCache[s.key] = s.val(); });
+    }
+    const photosSnap = await db.ref('broadcastPhotos').once('value');
+    broadcastPhotos = photosSnap.val() ? Object.entries(photosSnap.val()).map(([id,d])=>({id,...d})) : [];
+}
+
+let balanceListener = null;
+function startBalanceListener() {
+    if(balanceListener) balanceListener();
+    if(admin && !admin.isMain) {
+        const adminRef = db.ref(`admins/${admin.id}`);
+        const callback = adminRef.on('value', (snap) => {
+            if(snap.exists() && admin) {
+                admin.balance = snap.val().balance || 0;
+                const balSpan = document.getElementById('dynamicBalanceSpan');
+                if(balSpan) balSpan.innerText = `₹${admin.balance}`;
+            }
+        });
+        balanceListener = () => adminRef.off('value', callback);
+    }
+}
+
+function main() {
+    document.getElementById('app').innerHTML = `
+        <div class="card" style="max-width:650px;margin:80px auto;text-align:center;">
+            <h2>⚔️ ADMIN LOGIN ⚔️</h2>
+            <div class="admin-grid" id="adminGrid"></div>
+            <div class="input-group"><label>🔐 PASSWORD</label><input type="password" id="pass" placeholder="Enter password"></div>
+            <button class="btn-green" id="loginBtn" style="width:100%;">🚀 LOGIN</button>
+        </div>
+    `;
+    const grid = document.getElementById('adminGrid');
+    ADMINS.forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'admin-option';
+        div.innerHTML = `<strong>${a.name}</strong><br>${a.isMain ? '⭐ MAIN' : 'ADMIN'}`;
+        div.onclick = () => {
+            document.querySelectorAll('.admin-option').forEach(el=>el.classList.remove('selected'));
+            div.classList.add('selected');
+            window.selectedAdmin = a;
+        };
+        grid.appendChild(div);
+    });
+    document.getElementById('loginBtn').onclick = async () => {
+        const pass = document.getElementById('pass').value;
+        if(window.selectedAdmin && window.selectedAdmin.password === pass) {
+            admin = window.selectedAdmin;
+            if(!admin.isMain) {
+                const snap = await db.ref(`admins/${admin.id}`).once('value');
+                if(snap.exists()) admin.balance = snap.val().balance || 0;
+                else await db.ref(`admins/${admin.id}`).set({ balance: 0, name: admin.name });
+            }
+            await loadData();
+            startBalanceListener();
+            home();
+        } else alert('❌ Wrong password!');
+    };
+}
+
+async function home() {
+    const myTourneys = tournaments.filter(t => t.adminId === admin.id);
+    const balanceText = admin.isMain ? '∞ UNLIMITED' : `₹${admin.balance}`;
+    let totalEarnings = 0, totalPlayers = 0;
+    for(let t of myTourneys) {
+        const pc = Object.keys(t.participants || {}).length;
+        totalPlayers += pc;
+        totalEarnings += pc * t.fees;
+    }
+    
+    document.getElementById('app').innerHTML = `
+        <div class="card">
+            <div class="flex">
+                <h2>👑 ${admin.name} ${admin.isMain ? '<span class="badge">MASTER</span>' : ''}</h2>
+                <button class="btn-red" id="logoutBtn">🔒 LOGOUT</button>
+            </div>
+            <div class="balance">
+                <div>💰 WALLET BALANCE</div>
+                <div class="amount" id="dynamicBalanceSpan">${balanceText}</div>
+                ${!admin.isMain ? `<div style="font-size:11px;">Total Earned: ₹${totalEarnings} | Players: ${totalPlayers}</div>` : ''}
+                <button class="btn-blue" id="refreshBalanceBtn" style="margin-top:12px;">🔄 SYNC</button>
+            </div>
+            <div class="grid-2">
+                <button class="btn-green" id="createBtn">🎮 CREATE TOURNEY</button>
+                <button class="btn-red" id="deleteTourneyListBtn">🗑️ DELETE</button>
+                <button class="btn-green" id="sendMoneyBtn">💸 SEND MONEY</button>
+                <button class="btn-orange" id="withdrawBtn">🏧 WITHDRAW</button>
+                <button class="btn-blue" id="broadcastBtn">📢 BROADCAST</button>
+                <button class="btn-purple" id="viewAllTourneysBtn">🌍 ALL TOURNAMENTS</button>
+                <button class="btn-purple" id="personalMsgBtn">💬 PERSONAL MSG</button>
+                <button class="btn-pink" id="uploadPhotoBtn">🖼️ UPLOAD PHOTO</button>
+                <button class="btn-pink" id="managePhotosBtn">📸 MANAGE PHOTOS</button>
+            </div>
+            <hr>
+            <div id="tournamentsListSection"></div>
+        </div>
+    `;
+    
+    document.getElementById('logoutBtn').onclick = () => { if(balanceListener) balanceListener(); admin = null; main(); };
+    document.getElementById('refreshBalanceBtn').onclick = async () => {
+        if(!admin.isMain){
+            const snap = await db.ref(`admins/${admin.id}`).once('value');
+            if(snap.exists()) admin.balance = snap.val().balance || 0;
+            document.getElementById('dynamicBalanceSpan').innerText = `₹${admin.balance}`;
+        }
+        home();
+    };
+    document.getElementById('createBtn').onclick = createTournament;
+    document.getElementById('deleteTourneyListBtn').onclick = showDeleteTournamentList;
+    document.getElementById('sendMoneyBtn').onclick = sendMoney;
+    document.getElementById('withdrawBtn').onclick = adminWithdraw;
+    document.getElementById('broadcastBtn').onclick = broadcast;
+    document.getElementById('viewAllTourneysBtn').onclick = viewAllTournaments;
+    document.getElementById('personalMsgBtn').onclick = personalMessageModal;
+    document.getElementById('uploadPhotoBtn').onclick = uploadPhotoModal;
+    document.getElementById('managePhotosBtn').onclick = managePhotosModal;
+    
+    const tourneysDiv = document.getElementById('tournamentsListSection');
+    if(myTourneys.length > 0) {
+        tourneysDiv.innerHTML = `<h3>🏆 YOUR TOURNAMENTS</h3>` + myTourneys.map(t => {
+            const pc = Object.keys(t.participants || {}).length;
+            const isFree = t.fees === 0;
+            return `
+            <div class="tournament-card">
+                <div class="tournament-name">🎯 ${t.name} ${isFree ? '<span class="free-badge">🎁 FREE TOURNAMENT</span>' : ''}</div>
+                <div class="tournament-detail">🎮 ${t.type} | ${t.mode || 'Solo'} | ${isFree ? '₹0 FREE' : '₹'+t.fees} | 💀 ₹${t.perKill || 0}/kill</div>
+                <div class="tournament-detail">👥 ${pc}/${t.maxPlayers} joined | 🗺️ ${t.map || 'Bermuda'}</div>
+                <div class="tournament-detail">📅 ${t.date} | ⏰ ${t.time}</div>
+                <div class="prize-info">💰 ${isFree ? 'Free Tournament - No Prize Pool' : 'You Earned: ₹' + (pc * t.fees) + ' from ' + pc + ' players'}</div>
+                <div class="room-section"><strong>🔑 ROOM ID:</strong> ${t.roomId} | <strong>🔐 PASS:</strong> ${t.roomPass}</div>
+                ${t.tournamentPhoto ? `<img src="${t.tournamentPhoto}" style="max-width:100px; border-radius:12px;">` : ''}
+                <div class="button-group">
+                    <button class="view-players-btn" onclick="viewTournamentPlayers('${t.id}')">👥 VIEW PLAYERS (${pc})</button>
+                    <button class="edit-tourney-btn" onclick="editTournament('${t.id}')">✏️ EDIT</button>
+                    <button class="delete-tourney-btn" onclick="deleteTournament('${t.id}', ${t.fees})">🗑️ DELETE</button>
+                </div>
+            </div>`;
+        }).join('');
+    } else {
+        tourneysDiv.innerHTML = '<div class="tournament-card" style="text-align:center;">📭 No tournaments. Click "CREATE TOURNEY".</div>';
+    }
+}
+
+function createTournament() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>🎮 CREATE TOURNAMENT</h3>
+            <div class="input-group"><label>🏆 TOURNAMENT NAME</label><input type="text" id="tName" placeholder="Enter name"></div>
+            <div class="form-row">
+                <div class="input-group"><label>🎮 GAME</label><select id="tType"><option>Free Fire</option><option>BGMI</option></select></div>
+                <div class="input-group"><label>👥 MODE</label>
+                    <select id="tMode">
+                        <option value="Solo">🎯 Solo</option>
+                        <option value="Duo">👥 Duo</option>
+                        <option value="Squad">👨‍👨‍👧‍👦 Squad</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="input-group"><label>🎮 VERSION</label><select id="tVersion"><option>TPP</option><option>FPP</option></select></div>
+                <div class="input-group"><label>🗺️ MAP</label><select id="tMap"><option>Bermuda</option><option>Kalahari</option><option>Purgatory</option><option>Erangel</option><option>Miramar</option><option>Livik</option></select></div>
+            </div>
+            <div class="form-row">
+                <div class="input-group"><label>💰 ENTRY FEES (₹)</label><input type="number" id="tFees" value="50"></div>
+                <div class="input-group"><label>💀 ₹ PER KILL</label><input type="number" id="tPerKill" value="10"></div>
+            </div>
+            <div class="form-row">
+                <div class="input-group"><label>👥 MAX PLAYERS</label><input type="number" id="tMax" value="50"></div>
+                <div class="input-group"><label>🏆 PRIZE POOL</label><input type="text" id="prizePreview" readonly style="background:#0f172a; color:#f59e0b;"></div>
+            </div>
+            <div class="form-row">
+                <div class="input-group"><label>📅 DATE</label><input type="date" id="tDate"></div>
+                <div class="input-group"><label>⏰ TIME</label><input type="time" id="tTime"></div>
+            </div>
+            <div class="input-group"><label>📜 RULES</label><textarea id="tRules" rows="3" placeholder="1. Screen Recording MANDATORY&#10;2. No hacking/cheating"></textarea></div>
+            <div class="room-section"><strong>🎮 ROOM DETAILS</strong></div>
+            <div class="form-row">
+                <div class="input-group"><label>🔑 ROOM ID</label><input type="text" id="tRoomId"></div>
+                <div class="input-group"><label>🔐 PASSWORD</label><input type="text" id="tRoomPass"></div>
+            </div>
+            <div class="image-upload" id="uploadArea">🖼️ UPLOAD POSTER<input type="file" id="photoFile" style="display:none"></div>
+            <div id="previewArea"></div>
+            <div class="warning-text" style="background:rgba(16,185,129,0.1); color:#10b981;">
+                💡 Tip: Set Entry Fee = 0 to create a FREE TOURNAMENT
+            </div>
+            <div class="info-links">
+                <strong style="color:#f59e0b;">📢 IMPORTANT LINKS</strong>
+                <a href="https://www.youtube.com/@FF-Championship-Arena" target="_blank" class="info-link"><div class="icon">🎬</div><div class="text"><div class="title">YouTube</div></div><div class="arrow">➡️</div></a>
+                <a href="https://chat.whatsapp.com/KGREA0JGpVc1Ni8t5HxyYV" target="_blank" class="info-link"><div class="icon">💬</div><div class="text"><div class="title">WhatsApp</div></div><div class="arrow">➡️</div></a>
+            </div>
+            <div class="warning-text">💰 When players join, fees will be ADDED to your wallet! (Free tournaments: ₹0)</div>
+            <button class="btn-green" id="createTourneyBtn" style="width:100%;">✅ CREATE</button>
+            <button class="btn-red" id="closeModalBtn" style="width:100%; margin-top:10px;">❌ CANCEL</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    const feesInput = document.getElementById('tFees');
+    const maxInput = document.getElementById('tMax');
+    function updatePrize() { 
+        const f = parseInt(feesInput.value) || 0;
+        const m = parseInt(maxInput.value) || 0;
+        document.getElementById('prizePreview').value = f === 0 ? 'FREE TOURNAMENT - ₹0' : `₹${f * m}`;
+    }
+    feesInput.oninput = updatePrize;
+    maxInput.oninput = updatePrize;
+    
+    let photoBase64 = null;
+    document.getElementById('uploadArea').onclick = () => document.getElementById('photoFile').click();
+    document.getElementById('photoFile').onchange = (e) => {
+        const file = e.target.files[0];
+        if(file && file.type.startsWith('image/')){
+            const reader = new FileReader();
+            reader.onload = (ev) => { photoBase64 = ev.target.result; document.getElementById('previewArea').innerHTML = `<img src="${photoBase64}" style="max-width:150px; border-radius:12px;">`; };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    document.getElementById('createTourneyBtn').onclick = async () => {
+        const name = document.getElementById('tName').value.trim();
+        const type = document.getElementById('tType').value;
+        const mode = document.getElementById('tMode').value;
+        const version = document.getElementById('tVersion').value;
+        const map = document.getElementById('tMap').value;
+        let fees = parseInt(document.getElementById('tFees').value);
+        const perKill = parseInt(document.getElementById('tPerKill').value) || 0;
+        const maxPlayers = parseInt(document.getElementById('tMax').value);
+        const date = document.getElementById('tDate').value;
+        const time = document.getElementById('tTime').value;
+        const rules = document.getElementById('tRules').value || "1. Screen Recording MANDATORY\n2. No hacking/cheating\n3. Join on time";
+        const roomId = document.getElementById('tRoomId').value.trim();
+        const roomPass = document.getElementById('tRoomPass').value.trim();
+        
+        if(!name) return alert('❌ Enter tournament name');
+        if(fees < 0) fees = 0;
+        if(!maxPlayers || maxPlayers <= 0) return alert('❌ Enter max players');
+        if(!date) return alert('❌ Select date');
+        if(!time) return alert('❌ Select time');
+        if(!roomId) return alert('❌ Enter Room ID');
+        if(!roomPass) return alert('❌ Enter Room Password');
+        
+        const tournamentData = {
+            name, type, mode, version, map, fees, perKill, maxPlayers, date, time,
+            rules, roomId, roomPass,
+            adminId: admin.id, adminName: admin.name,
+            participants: {},
+            createdAt: new Date().toISOString(),
+            isFree: fees === 0
+        };
+        if(photoBase64) tournamentData.tournamentPhoto = photoBase64;
+        
+        await db.ref('tournaments').push(tournamentData);
+        alert(`✅ Tournament "${name}" created!\n\n${mode} Mode | Entry: ${fees === 0 ? 'FREE' : '₹'+fees} | Prize Pool: ${fees === 0 ? 'Free Tournament' : '₹' + (fees * maxPlayers)}`);
+        modal.remove();
+        await loadData();
+        home();
+    };
+    document.getElementById('closeModalBtn').onclick = () => modal.remove();
+}
+
+function uploadPhotoModal() {
+    let photoBase64 = null;
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>🖼️ UPLOAD PHOTO TO GALLERY</h3>
+            <div class="image-upload" id="photoUploadArea">📸 CLICK TO SELECT PHOTO FROM GALLERY<input type="file" id="photoFileInput" accept="image/*" style="display:none"></div>
+            <div id="photoPreviewDiv" style="text-align:center;"></div>
+            <div class="input-group"><label>📝 CAPTION (Optional)</label><textarea id="photoCaption" rows="2" placeholder="Write something about this photo..."></textarea></div>
+            <button class="btn-green" id="uploadPhotoBtn" style="width:100%;">📤 UPLOAD TO GALLERY</button>
+            <button class="btn-red" id="closeModalBtn" style="width:100%; margin-top:10px;">❌ CANCEL</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    const uploadArea = document.getElementById('photoUploadArea');
+    const fileInput = document.getElementById('photoFileInput');
+    uploadArea.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if(file && file.type.startsWith('image/')){
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                photoBase64 = ev.target.result;
+                document.getElementById('photoPreviewDiv').innerHTML = `<img src="${photoBase64}" style="max-width:200px; border-radius:12px; border:1px solid #06b6d4;">`;
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    document.getElementById('uploadPhotoBtn').onclick = async () => {
+        if(!photoBase64) return alert('❌ Please select a photo first');
+        const caption = document.getElementById('photoCaption').value.trim();
+        await db.ref('broadcastPhotos').push({
+            imageBase64: photoBase64,
+            caption: caption,
+            fromAdmin: admin.name,
+            timestamp: new Date().toISOString(),
+            read: false
+        });
+        alert('✅ Photo uploaded to gallery! Users can now see it.');
+        modal.remove();
+    };
+    document.getElementById('closeModalBtn').onclick = () => modal.remove();
+}
+
+async function managePhotosModal() {
+    await loadData();
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    let photosHtml = '';
+    if(broadcastPhotos.length === 0) {
+        photosHtml = '<div style="text-align:center; padding:30px;">📭 No photos uploaded yet</div>';
+    } else {
+        photosHtml = `<div class="photo-grid">` + broadcastPhotos.map(photo => `
+            <div class="photo-item">
+                <img src="${photo.imageBase64}" alt="Photo">
+                <div class="photo-caption">${photo.caption || 'No caption'}<br><small>${new Date(photo.timestamp).toLocaleString()}</small></div>
+                <div class="delete-photo" onclick="deletePhoto('${photo.id}')">🗑️</div>
+            </div>
+        `).join('') + `</div>`;
+    }
+    
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>📸 MANAGE GALLERY PHOTOS</h3>
+            ${photosHtml}
+            <button class="btn-green" id="closeModalBtn" style="width:100%; margin-top:20px;">CLOSE</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('closeModalBtn').onclick = () => modal.remove();
+}
+
+window.deletePhoto = async (photoId) => {
+    if(confirm('Delete this photo from gallery?')){
+        await db.ref(`broadcastPhotos/${photoId}`).remove();
+        alert('✅ Photo deleted!');
+        await loadData();
+        managePhotosModal();
+    }
+};
+
+function editTournament(id) {
+    const t = tournaments.find(x=>x.id===id);
+    if(!t) return;
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>✏️ EDIT TOURNAMENT</h3>
+            <div class="input-group"><label>🏆 NAME</label><input type="text" id="eName" value="${t.name.replace(/"/g, '&quot;')}"></div>
+            <div class="form-row"><div class="input-group"><label>💰 ENTRY</label><input type="number" id="eFees" value="${t.fees}"></div><div class="input-group"><label>💀 ₹/KILL</label><input type="number" id="ePerKill" value="${t.perKill || 0}"></div></div>
+            <div class="form-row"><div class="input-group"><label>👥 MAX</label><input type="number" id="eMax" value="${t.maxPlayers}"></div><div class="input-group"><label>🗺️ MAP</label><input type="text" id="eMap" value="${t.map || 'Bermuda'}"></div></div>
+            <div class="form-row"><div class="input-group"><label>📅 DATE</label><input type="date" id="eDate" value="${t.date}"></div><div class="input-group"><label>⏰ TIME</label><input type="time" id="eTime" value="${t.time}"></div></div>
+            <div class="form-row"><div class="input-group"><label>🔑 ROOM ID</label><input type="text" id="eRoomId" value="${t.roomId}"></div><div class="input-group"><label>🔐 PASS</label><input type="text" id="eRoomPass" value="${t.roomPass}"></div></div>
+            <button class="btn-green" id="saveEdit">💾 SAVE</button>
+            <button class="btn-red" id="closeEdit">❌ CANCEL</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('saveEdit').onclick = async () => {
+        const newFees = parseInt(document.getElementById('eFees').value);
+        await db.ref(`tournaments/${id}`).update({
+            name: document.getElementById('eName').value,
+            fees: newFees,
+            perKill: parseInt(document.getElementById('ePerKill').value) || 0,
+            maxPlayers: parseInt(document.getElementById('eMax').value),
+            map: document.getElementById('eMap').value,
+            date: document.getElementById('eDate').value,
+            time: document.getElementById('eTime').value,
+            roomId: document.getElementById('eRoomId').value,
+            roomPass: document.getElementById('eRoomPass').value,
+            isFree: newFees === 0
+        });
+        alert('✅ Updated!');
+        modal.remove();
+        await loadData();
+        home();
+    };
+    document.getElementById('closeEdit').onclick = () => modal.remove();
+}
+
+function viewAllTournaments() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    let html = tournaments.length === 0 ? '<div>No tournaments</div>' : 
+        tournaments.map(t => `<div class="tournament-card" style="margin:10px 0;"><div class="tournament-name">🏆 ${t.name} ${t.fees === 0 ? '🎁 FREE' : ''}</div><div class="tournament-detail">${t.type} | ${t.mode} | ${t.fees === 0 ? 'FREE' : '₹'+t.fees}</div><div class="tournament-detail">👑 ${t.adminName || 'Unknown'}</div></div>`).join('');
+    modal.innerHTML = `<div class="modal-content"><h3>🌍 ALL TOURNAMENTS</h3>${html}<button class="btn-green" id="closeModal" style="width:100%; margin-top:20px;">CLOSE</button></div>`;
+    document.body.appendChild(modal);
+    document.getElementById('closeModal').onclick = () => modal.remove();
+}
+
+// VIEW PLAYERS WITH TEAM DETAILS (Team Name, Email, UID, Nicknames)
+window.viewTournamentPlayers = async (id) => {
+    const t = tournaments.find(x=>x.id===id);
+    if(!t) return;
+    const participants = t.participants || {};
+    const list = Object.entries(participants);
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    let html = list.length === 0 ? '<div>No players</div>' : 
+        list.map(([uid, p]) => {
+            let teamDetailsHtml = '';
+            if(p.teamMembers && p.teamMembers.length > 0) {
+                const teamName = p.teamName || `Team ${p.teamMembers[0].name}'s Team`;
+                teamDetailsHtml = `
+                    <div style="background:rgba(6,182,212,0.1); padding:10px; border-radius:12px; margin-top:8px;">
+                        <div><strong>🏷️ TEAM NAME:</strong> ${teamName}</div>
+                        <div><strong>📧 EMAIL:</strong> ${p.email}</div>
+                        <div><strong>🎮 TEAM MEMBERS:</strong></div>
+                        <div style="margin-left:15px; margin-top:5px;">
+                            ${p.teamMembers.map((m, idx) => `
+                                <div>${idx+1}. <strong>${m.name}</strong> (UID: ${m.uid})</div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                const userData = usersCache[uid] || {};
+                teamDetailsHtml = `
+                    <div style="background:rgba(6,182,212,0.1); padding:10px; border-radius:12px; margin-top:8px;">
+                        <div><strong>📧 EMAIL:</strong> ${p.email || userData.email || 'N/A'}</div>
+                        <div><strong>🎮 NICKNAME:</strong> ${p.ffName || userData.ffName || 'N/A'}</div>
+                        <div><strong>🆔 UID:</strong> ${p.ffUid || userData.ffUid || 'N/A'}</div>
+                    </div>
+                `;
+            }
+            return `<div class="player-card"><div class="player-name">🎮 ${p.name}</div>${teamDetailsHtml}</div>`;
+        }).join('');
+    modal.innerHTML = `<div class="modal-content"><h3>👥 PLAYERS - ${t.name} (${t.mode || 'Solo'} Mode)</h3><div class="players-list">${html}</div><button class="btn-green" id="closeModal" style="width:100%; margin-top:20px;">CLOSE</button></div>`;
+    document.body.appendChild(modal);
+    document.getElementById('closeModal').onclick = () => modal.remove();
+};
+
+window.deleteTournament = async (id, fees) => {
+    const t = tournaments.find(x=>x.id===id);
+    if(!t) return;
+    const participants = t.participants || {};
+    const playerCount = Object.keys(participants).length;
+    const totalRefund = playerCount * fees;
+    if(!confirm(`⚠️ DELETE "${t.name}"\n\nPlayers: ${playerCount}\nRefund: ₹${totalRefund}\n\nThis will be DEDUCTED from your wallet.\nContinue?`)) return;
+    if(!admin.isMain && admin.balance < totalRefund) { alert(`❌ Insufficient balance!\nYour Balance: ₹${admin.balance}\nRefund Needed: ₹${totalRefund}`); return; }
+    for(let p of Object.values(participants)) {
+        const userSnap = await db.ref('users').orderByChild('email').equalTo(p.email).once('value');
+        userSnap.forEach(async(s) => { await s.ref.update({ balance: (s.val()?.balance || 0) + fees }); });
+    }
+    if(!admin.isMain) { const newBalance = admin.balance - totalRefund; await db.ref(`admins/${admin.id}`).update({ balance: newBalance }); admin.balance = newBalance; }
+    await db.ref(`tournaments/${id}`).remove();
+    alert(`✅ Tournament deleted!\nRefunded ${playerCount} players: ₹${totalRefund}`);
+    await loadData();
+    home();
+};
+
+function showDeleteTournamentList() {
+    const my = tournaments.filter(t => t.adminId === admin.id);
+    if(my.length === 0) return alert('No tournaments');
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `<div class="modal-content"><h3>🗑️ DELETE TOURNAMENT</h3><select id="delSelect" style="width:100%; padding:12px;">${my.map(t => `<option value="${t.id}" data-fees="${t.fees}" data-players="${Object.keys(t.participants||{}).length}">${t.name} | ${t.fees === 0 ? 'FREE' : '₹'+t.fees} | ${Object.keys(t.participants||{}).length} joined</option>`).join('')}</select><button class="btn-red" id="confirmDel" style="width:100%; margin-top:15px;">🗑️ DELETE</button><button class="btn-blue" id="closeModal" style="width:100%; margin-top:10px;">CLOSE</button></div>`;
+    document.body.appendChild(modal);
+    document.getElementById('confirmDel').onclick = async () => { const sel = document.getElementById('delSelect'); const id = sel.value; const fees = parseInt(sel.options[sel.selectedIndex].dataset.fees); modal.remove(); await deleteTournament(id, fees); };
+    document.getElementById('closeModal').onclick = () => modal.remove();
+}
+
+async function sendMoney() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `<div class="modal-content"><h3>💰 SEND MONEY</h3><input type="email" id="userEmail" placeholder="User Email"><input type="number" id="amount" placeholder="Amount (₹)"><button class="btn-green" id="sendBtn">✅ SEND</button><button class="btn-red" id="closeModal">❌ CANCEL</button></div>`;
+    document.body.appendChild(modal);
+    document.getElementById('sendBtn').onclick = async () => {
+        const email = document.getElementById('userEmail').value.trim();
+        const amt = parseInt(document.getElementById('amount').value);
+        if(!email || !amt) return alert('Fill fields');
+        const snap = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+        if(!snap.exists()) return alert('User not found');
+        snap.forEach(async(s) => { await s.ref.update({ balance: (s.val().balance || 0) + amt }); });
+        alert(`✅ ₹${amt} sent to ${email}`);
+        modal.remove();
+        await loadData();
+        home();
+    };
+    document.getElementById('closeModal').onclick = () => modal.remove();
+}
+
+function adminWithdraw() {
+    if(admin.isMain) return alert('Main admin cannot withdraw');
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `<div class="modal-content"><h3>🏧 WITHDRAW</h3><div>Balance: ₹${admin.balance}</div><input type="text" id="upi" placeholder="UPI ID"><input type="number" id="amt" placeholder="Amount" min="50" max="${admin.balance}"><button class="btn-orange" id="withdrawBtn">REQUEST</button><button class="btn-red" id="closeModal">CANCEL</button></div>`;
+    document.body.appendChild(modal);
+    document.getElementById('withdrawBtn').onclick = async () => {
+        const upi = document.getElementById('upi').value.trim();
+        const amount = parseInt(document.getElementById('amt').value);
+        if(!upi || !amount) return alert('Fill fields');
+        await db.ref(`adminWithdrawRequests/${admin.id}`).push({ adminName: admin.name, upi, amount, status: 'pending', requestedAt: new Date().toISOString() });
+        alert(`✅ Withdrawal request of ₹${amount} submitted.`);
+        modal.remove();
+    };
+    document.getElementById('closeModal').onclick = () => modal.remove();
+}
+
+function broadcast() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `<div class="modal-content"><h3>📢 BROADCAST</h3><textarea id="msg" rows="4" placeholder="Message..."></textarea><button class="btn-green" id="sendMsg">SEND</button><button class="btn-red" id="closeModal">CANCEL</button></div>`;
+    document.body.appendChild(modal);
+    document.getElementById('sendMsg').onclick = async () => {
+        const msg = document.getElementById('msg').value.trim();
+        if(!msg) return alert('Enter message');
+        await db.ref('broadcastMessages').push({ text: msg, fromAdmin: admin.name, timestamp: new Date().toISOString() });
+        alert('✅ Broadcast sent!');
+        modal.remove();
+    };
+    document.getElementById('closeModal').onclick = () => modal.remove();
+}
+
+function personalMessageModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>💬 SEND PERSONAL MESSAGE</h3>
+            <div class="input-group"><label>📧 USER EMAIL</label><input type="email" id="pmEmail" placeholder="user@example.com"></div>
+            <div class="input-group"><label>💬 MESSAGE</label><textarea id="pmMsg" rows="4" placeholder="Type your message..."></textarea></div>
+            <button class="btn-green" id="sendPersonalMsg" style="width:100%;">📩 SEND</button>
+            <button class="btn-red" id="closeModal" style="width:100%; margin-top:10px;">CLOSE</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('sendPersonalMsg').onclick = async () => {
+        const email = document.getElementById('pmEmail').value.trim();
+        const msg = document.getElementById('pmMsg').value.trim();
+        if(!email || !msg) return alert('Fill all fields');
+        const snap = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+        let userId = null;
+        snap.forEach(s => { userId = s.key; });
+        if(!userId) return alert('User not found');
+        await db.ref(`personalMessages/${userId}`).push({ text: msg, fromAdmin: admin.name, timestamp: new Date().toISOString(), read: false });
+        alert(`✅ Personal message sent to ${email}`);
+        modal.remove();
+    };
+    document.getElementById('closeModal').onclick = () => modal.remove();
+}
+
+main();
+</script>
+</body>
+</html>
