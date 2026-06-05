@@ -400,6 +400,13 @@
             margin-top: 8px;
             display: inline-block;
         }
+        
+        .domain-info {
+            font-size: 11px;
+            color: #f59e0b;
+            margin-top: 5px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -431,7 +438,8 @@ async function loadBanner() {
 }
 function getBannerHTML() {
     if(bannerImage) return `<img src="${bannerImage}" alt="Banner">`;
-    return `<div class="default-banner">🔥 Flippy Arena 🔥<br><small>16+ mandatory</small></div>`;
+    return `<div class="default-banner">🔥 Flippy Arena 🔥<br><small>16+ mandatory
+   | 100% safe| |withdrawRequests accept within 24hour|</small></div>`;
 }
 
 async function loadGallery() {
@@ -502,6 +510,9 @@ function signupScreen() {
                     <label>🆔 FREE FIRE UID</label>
                     <input type="text" id="ffUid" placeholder="Your UID">
                 </div>
+                <div class="domain-info">
+                    ✅ Allowed: @gmail.com, @yahoo.com, @outlook.com, @hotmail.com, @rediffmail.com
+                </div>
                 <div class="grid">
                     <button class="btn-green" style="width:100%;border-radius:10px;" onclick="signup()">CREATE</button>
                     <button class="btn-red" style="width:100%;border-radius:10px;" onclick="loginScreen()">BACK</button>
@@ -510,7 +521,7 @@ function signupScreen() {
         </div>`;
 }
 
-// ✅ UPDATED SIGNUP FUNCTION - Email duplicate check with case-insensitive
+// ✅ UPDATED SIGNUP FUNCTION - Email domain restriction (Only Gmail, Yahoo, Outlook, Hotmail, Rediffmail)
 async function signup() {
     const name = document.getElementById('name').value.trim();
     const email = document.getElementById('email').value.trim().toLowerCase();
@@ -533,6 +544,28 @@ async function signup() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if(!emailRegex.test(email)) {
         alert('❌ Please enter a valid email address!');
+        return;
+    }
+    
+    // ✅ ALLOWED DOMAINS LIST (Only these domains can signup)
+    const allowedDomains = [
+        'gmail.com',
+        'yahoo.com', 
+        'yahoo.co.in',
+        'outlook.com',
+        'hotmail.com',
+        'rediffmail.com',
+        'aol.com',
+        'live.com',
+        'msn.com'
+    ];
+    
+    // Extract domain from email
+    const emailDomain = email.split('@')[1];
+    
+    // Check if domain is allowed
+    if(!allowedDomains.includes(emailDomain)) {
+        alert(`❌ Only these email domains are allowed:\n\n${allowedDomains.join(', ')}\n\nYour email: ${email}\nDomain: ${emailDomain} is NOT allowed.\n\nPlease use Gmail, Yahoo, Outlook, Hotmail, or Rediffmail.`);
         return;
     }
     
