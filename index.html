@@ -100,6 +100,7 @@
         .btn-blue { background: linear-gradient(135deg, #3b82f6, #06b6d4); color: #fff; }
         .btn-red { background: linear-gradient(135deg, #dc2626, #ef4444); color: #fff; }
         .btn-orange { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
+        .btn-sm { padding: 5px 10px; font-size: 10px; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         
         .balance {
@@ -214,7 +215,25 @@
             border-radius: 12px;
             padding: 12px;
             margin: 8px 0;
+            position: relative;
         }
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .delete-msg-btn {
+            background: rgba(239,68,68,0.3);
+            border: none;
+            color: #ef4444;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        .delete-msg-btn:hover { background: #ef4444; color: #fff; }
+        
         .tag {
             background: #3b82f6;
             padding: 2px 8px;
@@ -260,6 +279,22 @@
         .detail-item { background: rgba(15,23,42,0.6); border-radius: 10px; padding: 10px; text-align: center; }
         .detail-label { font-size: 10px; color: #64748b; text-transform: uppercase; }
         .detail-value { font-size: 16px; font-weight: bold; color: #f59e0b; margin-top: 3px; }
+        
+        .rules-list {
+            background: rgba(15,23,42,0.6);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .rules-list ol {
+            margin-left: 20px;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+        .rules-list li {
+            margin: 8px 0;
+            line-height: 1.4;
+        }
 
         .ff-input-group {
             background: rgba(6,182,212,0.1);
@@ -353,6 +388,18 @@
             color: #94a3b8;
             text-align: center;
         }
+        
+        .tournament-detail-btn {
+            background: rgba(6,182,212,0.2);
+            border: 1px solid #06b6d4;
+            color: #06b6d4;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-top: 8px;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -384,8 +431,7 @@ async function loadBanner() {
 }
 function getBannerHTML() {
     if(bannerImage) return `<img src="${bannerImage}" alt="Banner">`;
-    return `<div class="default-banner">🔥 Flippy Arena 🔥
-    16+ mandatory</div>`;
+    return `<div class="default-banner">🔥 Flippy Arena 🔥<br><small>16+ mandatory</small></div>`;
 }
 
 async function loadGallery() {
@@ -405,7 +451,7 @@ async function loadAll() {
     if(user) {
         try {
             const pmSnap = await db.ref(`personalMessages/${user.id}`).once('value');
-            personalMessages = pmSnap.val() ? Object.values(pmSnap.val()) : [];
+            personalMessages = pmSnap.val() ? Object.entries(pmSnap.val()).map(([id, d]) => ({...d, msgId: id})) : [];
         } catch(e) { personalMessages = []; }
     }
 }
@@ -464,23 +510,79 @@ function signupScreen() {
         </div>`;
 }
 
+// ✅ UPDATED SIGNUP FUNCTION - Email duplicate check with case-insensitive
 async function signup() {
-    const name=document.getElementById('name').value, email=document.getElementById('email').value,
-          pass=document.getElementById('pass').value, ffName=document.getElementById('ffName').value,
-          ffUid=document.getElementById('ffUid').value;
-    if(!name||!email||!pass||!ffName||!ffUid) return alert('Fill all fields');
-    if(pass.length<6) return alert('Password min 6 chars');
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim().toLowerCase();
+    const pass = document.getElementById('pass').value;
+    const ffName = document.getElementById('ffName').value.trim();
+    const ffUid = document.getElementById('ffUid').value.trim();
+    
+    // Validation
+    if(!name || !email || !pass || !ffName || !ffUid) {
+        alert('❌ Fill all fields!');
+        return;
+    }
+    
+    if(pass.length < 6) {
+        alert('❌ Password must be at least 6 characters!');
+        return;
+    }
+    
+    // Email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailRegex.test(email)) {
+        alert('❌ Please enter a valid email address!');
+        return;
+    }
+    
     try {
-        const exist = await db.ref('users').orderByChild('email').equalTo(email).once('value');
-        if(exist.exists()) return alert('Email already exists');
-        await db.ref('users').push({name,email,password:pass,balance:0,ffName,ffUid});
-        alert('✅ Account created! Please login.');
+        // Check if email already exists (case-insensitive)
+        const usersRef = db.ref('users');
+        const snapshot = await usersRef.orderByChild('email').equalTo(email).once('value');
+        
+        if(snapshot.exists()) {
+            alert('❌ This email is already registered! Please use a different email or login.');
+            return;
+        }
+        
+        // Double check for any case variation (extra security)
+        let duplicateFound = false;
+        const allUsers = await usersRef.once('value');
+        allUsers.forEach((userSnap) => {
+            const userData = userSnap.val();
+            if(userData.email && userData.email.toLowerCase() === email) {
+                duplicateFound = true;
+            }
+        });
+        
+        if(duplicateFound) {
+            alert('❌ This email is already registered! Please login instead.');
+            return;
+        }
+        
+        // Create new user
+        await db.ref('users').push({
+            name: name,
+            email: email,
+            password: pass,
+            balance: 0,
+            ffName: ffName,
+            ffUid: ffUid,
+            createdAt: new Date().toISOString()
+        });
+        
+        alert('✅ Account created successfully! Please login.');
         loginScreen();
-    } catch(e) { alert("Error: "+e.message); }
+        
+    } catch(e) { 
+        alert("❌ Error: " + e.message); 
+    }
 }
 
 async function login() {
-    const email=document.getElementById('email').value, pass=document.getElementById('pass').value;
+    const email=document.getElementById('email').value.trim().toLowerCase();
+    const pass=document.getElementById('pass').value;
     try {
         const snap = await db.ref('users').orderByChild('email').equalTo(email).once('value');
         let data=null, uid=null;
@@ -542,6 +644,52 @@ function editProfile() {
     document.getElementById('closeProfileBtn').onclick = () => modal.remove();
 }
 
+// Function to delete a message
+async function deleteMessage(msgId) {
+    if(confirm('❌ Delete this message?')) {
+        await db.ref(`personalMessages/${user.id}/${msgId}`).remove();
+        alert('✅ Message deleted!');
+        home();
+    }
+}
+
+// Function to view joined tournament details again
+function viewJoinedTournamentDetails(tournament) {
+    const isFree = tournament.fees === 0;
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-title">🏆 TOURNAMENT DETAILS</div>
+            ${tournament.tournamentPhoto ? `<img src="${tournament.tournamentPhoto}" style="width:100%;border-radius:12px;margin-bottom:15px;height:140px;object-fit:cover;">` : `<div class="t-card-image-placeholder" style="height:100px;">🔥</div>`}
+            <div style="text-align:center;font-weight:bold;color:#06b6d4;margin-bottom:12px;">${tournament.name} ${isFree ? '🎁 FREE TOURNAMENT' : ''}</div>
+            <div class="detail-grid">
+                <div class="detail-item"><div class="detail-label">TYPE</div><div class="detail-value">${tournament.type || 'Squad'}</div></div>
+                <div class="detail-item"><div class="detail-label">DATE</div><div class="detail-value">${tournament.date || 'TBA'}</div></div>
+                <div class="detail-item"><div class="detail-label">TIME</div><div class="detail-value">${tournament.time || 'TBA'}</div></div>
+                <div class="detail-item"><div class="detail-label">MAP</div><div class="detail-value">${tournament.map || 'Bermuda'}</div></div>
+                <div class="detail-item"><div class="detail-label">ENTRY</div><div class="detail-value">${isFree ? 'FREE' : '₹'+tournament.fees}</div></div>
+                <div class="detail-item"><div class="detail-label">PER KILL</div><div class="detail-value">₹${tournament.perKill || 0}</div></div>
+                <div class="detail-item"><div class="detail-label">ROOM ID</div><div class="detail-value">${tournament.roomId || 'TBA'}</div></div>
+                <div class="detail-item"><div class="detail-label">PASSWORD</div><div class="detail-value">${tournament.roomPass || 'TBA'}</div></div>
+            </div>
+            <div class="rules-list">
+                <strong>📜 TOURNAMENT RULES:</strong>
+                <ol>
+                    <li>Screen Recording is mandatory for all players</li>
+                    <li>No hacking/cheating - Immediate disqualification</li>
+                    <li>Join room on time (10 minutes before match)</li>
+                    <li>No abusive language in chat/Discord</li>
+                    <li>Report your score immediately after match</li>
+                    <li>If any player disconnects, match continues</li>
+                    <li>Admin decision will be final</li>
+                </ol>
+            </div>
+            <button class="btn-red" onclick="this.closest('.modal').remove()" style="width:100%;">CLOSE</button>
+        </div>`;
+    document.body.appendChild(modal);
+}
+
 async function home() {
     await loadAll();
     const userJoined = tournaments.filter(t => t.participants && t.participants[user.id]);
@@ -590,28 +738,32 @@ async function home() {
     document.getElementById('youtubeBottomBtn').onclick = openYouTube;
     document.getElementById('whatsappBottomBtn').onclick = openWhatsApp;
 
-    // Messages
+    // Messages - WITH DELETE BUTTON
     const msgDiv = document.getElementById('msgList');
     msgDiv.innerHTML = personalMessages.length===0
         ? '<div class="message-card">📭 No messages</div>'
         : personalMessages.map(m=>`
             <div class="message-card">
-                <div><strong>📨 ${m.fromAdmin||'Admin'}</strong></div>
+                <div class="message-header">
+                    <strong>📨 ${m.fromAdmin || 'Admin'}</strong>
+                    <button class="delete-msg-btn" onclick="deleteMessage('${m.msgId}')">🗑️ DELETE</button>
+                </div>
                 <div style="margin:5px 0;font-size:12px;">${m.text}</div>
                 <div class="small-text">${new Date(m.timestamp).toLocaleString()}</div>
                 ${!m.read ? `<div class="read-btn" onclick="markMessageRead()">✅ MARK READ</div>` : ''}
             </div>`).join('');
 
-    // Joined Tournaments
+    // Joined Tournaments - WITH VIEW DETAILS BUTTON
     const joinedDiv = document.getElementById('joinedList');
     joinedDiv.innerHTML = userJoined.length===0
         ? '<div class="message-card">📭 No tournaments joined yet!</div>'
         : userJoined.map(t=>`
             <div class="room-card">
-                ${t.tournamentPhoto?`<img src="${t.tournamentPhoto}" style="width:100%;height:120px;object-fit:cover;">`:''}
+                ${t.tournamentPhoto?`<img src="${t.tournamentPhoto}" style="width:100%;height:120px;object-fit:cover;">`:'<div class="t-card-image-placeholder" style="height:120px;">🔥</div>'}
                 <div style="padding:12px 16px;">
                     <div style="font-weight:bold;color:#111;margin-bottom:8px;">🏆 ${t.name} ${t.fees === 0 ? '🎁 FREE' : ''}</div>
                     <div style="font-size:11px;color:#9ca3af;">📅 ${t.date || 'TBA'} | ⏰ ${t.time || 'TBA'}</div>
+                    <button class="tournament-detail-btn" onclick='viewJoinedTournamentDetails(${JSON.stringify(t).replace(/'/g, "&apos;")})'>👁️ VIEW FULL DETAILS</button>
                 </div>
                 <div class="room-grid">
                     <div class="room-cell"><div class="room-label">🔑 Room ID</div><div class="room-value">${t.roomId||'TBA'}</div></div>
@@ -623,7 +775,7 @@ async function home() {
                 </div>
             </div>`).join('');
 
-    // Available Tournaments - MODIFIED: Version replaced with Date & Time
+    // Available Tournaments
     const tourDiv = document.getElementById('tourList');
     tourDiv.innerHTML = available.length===0
         ? '<div class="message-card">📭 No tournaments available</div>'
@@ -635,11 +787,10 @@ async function home() {
                 ${t.tournamentPhoto ? `<img src="${t.tournamentPhoto}" class="t-card-image">` : `<div class="t-card-image-placeholder">🔥</div>`}
                 <div class="t-card-header"><div class="t-card-title">${t.name} ${isFree ? '🎁 FREE' : ''}</div></div>
                 <div class="t-card-stats">
-                    <div class="t-stat"><div class="t-stat-label">Prize Pool ▾</div><div class="t-stat-value"><span class="coin-icon"></span>${isFree ? 'FREE' : (t.fees||0)*(t.maxPlayers||0)}</div></div>
+                    <div class="t-stat"><div class="t-stat-label">Prize Pool</div><div class="t-stat-value"><span class="coin-icon"></span>${isFree ? 'FREE' : (t.fees||0)*(t.maxPlayers||0)}</div></div>
                     <div class="t-stat"><div class="t-stat-label">Per Kill</div><div class="t-stat-value"><span class="coin-icon"></span>${t.perKill||0}</div></div>
                     <div class="t-stat"><div class="t-stat-label">Entry Fee</div><div class="t-stat-value"><span class="coin-icon"></span>${isFree ? 'FREE' : t.fees||0}</div></div>
                 </div>
-                <!-- MODIFIED: VERSION REMOVED, DATE & TIME ADDED -->
                 <div class="t-card-details">
                     <div class="t-detail"><div class="t-detail-label">Type</div><div class="t-detail-value">${t.type||'Squad'}</div></div>
                     <div class="t-detail"><div class="t-detail-label">Date</div><div class="t-detail-value">${t.date || 'TBA'}</div></div>
@@ -679,9 +830,8 @@ function showDetails(id) {
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-title">🏆 TOURNAMENT DETAILS</div>
-            ${t.tournamentPhoto?`<img src="${t.tournamentPhoto}" style="width:100%;border-radius:12px;margin-bottom:15px;height:140px;object-fit:cover;">`:''}
+            ${t.tournamentPhoto?`<img src="${t.tournamentPhoto}" style="width:100%;border-radius:12px;margin-bottom:15px;height:140px;object-fit:cover;">`:'<div class="t-card-image-placeholder" style="height:100px;">🔥</div>'}
             <div style="text-align:center;font-weight:bold;color:#06b6d4;margin-bottom:12px;">${t.name} ${isFree ? '🎁 FREE TOURNAMENT' : ''}</div>
-            <!-- MODIFIED DETAIL GRID: VERSION REMOVED, DATE & TIME ADDED -->
             <div class="detail-grid">
                 <div class="detail-item"><div class="detail-label">TYPE</div><div class="detail-value">${t.type||'Squad'}</div></div>
                 <div class="detail-item"><div class="detail-label">DATE</div><div class="detail-value">${t.date || 'TBA'}</div></div>
@@ -692,7 +842,18 @@ function showDetails(id) {
                 <div class="detail-item"><div class="detail-label">PRIZE POOL</div><div class="detail-value">${isFree ? 'FREE' : '₹' + ((t.fees||0)*(t.maxPlayers||0))}</div></div>
                 <div class="detail-item"><div class="detail-label">PLAYERS</div><div class="detail-value">${Object.keys(t.participants||{}).length}/${t.maxPlayers}</div></div>
             </div>
-            <div class="warning-text"><strong>📜 RULES</strong><br>${t.rules || '1. Screen Recording Mandatory\n2. No hacking/cheating\n3. Join on time'}</div>
+            <div class="rules-list">
+                <strong>📜 TOURNAMENT RULES:</strong>
+                <ol>
+                    <li>Screen Recording is mandatory for all players</li>
+                    <li>No hacking/cheating - Immediate disqualification</li>
+                    <li>Join room on time (10 minutes before match)</li>
+                    <li>No abusive language in chat/Discord</li>
+                    <li>Report your score immediately after match</li>
+                    <li>If any player disconnects, match continues</li>
+                    <li>Admin decision will be final</li>
+                </ol>
+            </div>
             <div class="support-links-inline"><div class="mini-link" onclick="openYouTube()">🎬 YouTube</div><div class="mini-link" onclick="openWhatsApp()">💬 WhatsApp</div></div>
             <div style="background:rgba(239,68,68,0.1);border-radius:10px;padding:12px;margin:15px 0;text-align:center;font-size:11px;color:#fca5a5;">🔑 Room ID & Password will appear ONLY after registration</div>
             <div class="grid" style="gap:10px;">
@@ -743,7 +904,20 @@ function showRegistrationModal(tournamentId, fees) {
             <div class="modal-title">🎮 ${mode} REGISTRATION</div>
             <div style="text-align:center;margin:10px 0;"><strong>🏆 ${tournament.name}</strong><br>💰 Entry Fee: ${fees === 0 ? 'FREE' : '₹'+fees}</div>
             ${teamFields}
-            <div class="warning-text">⚠️ Screen Recording Mandatory! No hacking/cheating.</div>
+            <div class="rules-list">
+                <strong>📜 TOURNAMENT RULES (Read Carefully):</strong>
+                <ol>
+                    <li>Screen Recording is mandatory for all players</li>
+                    <li>No hacking/cheating - Immediate disqualification & ban</li>
+                    <li>Join room on time (10 minutes before match)</li>
+                    <li>No abusive language in chat/Discord/Game</li>
+                    <li>Report your score immediately after match in Discord</li>
+                    <li>If any player disconnects during match, match continues</li>
+                    <li>No late entries will be accepted</li>
+                    <li>Admin decision will be final in any dispute</li>
+                </ol>
+            </div>
+            <div class="warning-text">⚠️ By registering, you agree to all above rules. Violation will lead to disqualification without refund!</div>
             <button class="btn-green" id="confirmReg" style="width:100%;">✅ ${fees === 0 ? 'JOIN FREE' : 'CONFIRM & PAY ₹'+fees}</button>
             <button class="btn-red" id="cancelReg" style="width:100%;margin-top:10px;">❌ CANCEL</button>
         </div>`;
@@ -811,12 +985,12 @@ function showRegistrationModal(tournamentId, fees) {
             await db.ref(`admins/${adminId}`).update({ balance: oldAdminBalance + fees });
             
             user.balance -= fees;
-            paymentMsg = `\n\n💰 PAYMENT:\n💳 YOUR BALANCE: ₹${oldUserBalance} → ₹${user.balance}\n👑 ADMIN BALANCE: ₹${oldAdminBalance} → ₹${oldAdminBalance + fees}`;
+            paymentMsg = `\n\n💰 PAYMENT:\n💳 YOUR BALANCE: ₹${oldUserBalance} → ₹${user.balance}`;
         } else {
             paymentMsg = `\n\n🎁 FREE TOURNAMENT - No payment required!`;
         }
         
-        alert(`✅ REGISTERED SUCCESSFULLY!\n\n🏆 ${tournament.name}\n🎮 Mode: ${mode}${teamName ? `\n🏷️ Team Name: ${teamName}` : ''}\n💰 Entry Fee: ${fees === 0 ? 'FREE' : '₹'+fees}${paymentMsg}\n\n🔑 Room ID: ${tournament.roomId}\n🔐 Password: ${tournament.roomPass}\n\n📹 Screen Recording Mandatory!`);
+        alert(`✅ REGISTERED SUCCESSFULLY!\n\n🏆 ${tournament.name}\n🎮 Mode: ${mode}${teamName ? `\n🏷️ Team Name: ${teamName}` : ''}\n💰 Entry Fee: ${fees === 0 ? 'FREE' : '₹'+fees}${paymentMsg}\n\n🔑 Room ID: ${tournament.roomId}\n🔐 Password: ${tournament.roomPass}\n\n📹 Screen Recording Mandatory!\n\n📜 You can view tournament details anytime in "MY JOINED TOURNAMENTS" section.`);
         
         home();
     };
@@ -835,7 +1009,7 @@ async function sendMessage() {
     const msg = document.getElementById('userMsg').value;
     if(!msg) return alert('Enter message');
     await db.ref(`userMessagesToAdmin/${user.id}`).push({ userName: user.name, userEmail: user.email, message: msg, timestamp: new Date().toISOString() });
-    alert('✅ Message sent!');
+    alert('✅ Message sent to admin!');
     document.getElementById('userMsg').value = '';
 }
 
@@ -885,7 +1059,7 @@ function withdrawModal() {
         await db.ref(`withdrawRequests/${user.id}`).push({ upi, amount: amt, userName: user.name, userEmail: user.email, status: 'pending', requestedAt: new Date().toISOString() });
         await db.ref(`users/${user.id}`).update({ balance: user.balance - amt });
         user.balance -= amt;
-        alert(`✅ Withdrawal request sent! ₹${amt} will be sent to ${upi}`);
+        alert(`✅ Withdrawal request sent! ₹${amt} will be sent to ${upi} within 24-48 hours.`);
         modal.remove();
         home();
     };
